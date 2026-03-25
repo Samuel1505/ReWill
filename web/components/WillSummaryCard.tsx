@@ -189,19 +189,21 @@ export function WillSummaryCard({ will, onRefetch }: WillSummaryCardProps) {
 
         {/* Cancel Will */}
         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
-              disabled={isCancelLoading}
-            >
-              {isCancelLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <AlertTriangle className="mr-2 h-4 w-4" />
-              )}
-              Cancel Will &amp; Withdraw
-            </Button>
+          <AlertDialogTrigger
+            render={
+              <Button
+                variant="outline"
+                className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
+                disabled={isCancelLoading}
+              />
+            }
+          >
+            {isCancelLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <AlertTriangle className="mr-2 h-4 w-4" />
+            )}
+            Cancel Will &amp; Withdraw
           </AlertDialogTrigger>
           <AlertDialogContent className="border-border bg-card">
             <AlertDialogHeader>

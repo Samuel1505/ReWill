@@ -1,7 +1,7 @@
 "use client";
 
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther } from "viem";
+import { parseEther } from "viem"; // used by useDeposit
 import { REGISTRY_ADDRESS } from "@/lib/somnia";
 import { CHECK_IN_REGISTRY_ABI } from "@/lib/abi";
 
@@ -12,19 +12,12 @@ export function useCreateWill() {
     beneficiaries: `0x${string}`[],
     shares: bigint[],
     interval: bigint,
-    initialDepositEth?: string
   ) => {
-    const value =
-      initialDepositEth && parseFloat(initialDepositEth) > 0
-        ? parseEther(initialDepositEth)
-        : undefined;
-
     writeContract({
       address: REGISTRY_ADDRESS,
       abi: CHECK_IN_REGISTRY_ABI,
       functionName: "createWill",
       args: [beneficiaries, shares, interval],
-      ...(value ? { value } : {}),
     });
   };
 

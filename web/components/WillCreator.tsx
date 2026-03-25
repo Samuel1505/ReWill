@@ -35,15 +35,25 @@ const INTERVAL_PRESETS: { label: string; value: IntervalPreset; seconds: number 
   { label: "Custom", value: "custom", seconds: 0 },
 ];
 
-// Minimum 1 hour for testnet
-const MIN_INTERVAL_SECONDS = 3600;
+// Minimum 1 minute
+const MIN_INTERVAL_SECONDS = 60;
+
+type TimeUnit = "minutes" | "hours" | "days" | "weeks";
+
+const UNIT_OPTIONS: { label: string; value: TimeUnit; multiplier: number }[] = [
+  { label: "Minutes", value: "minutes", multiplier: 60 },
+  { label: "Hours",   value: "hours",   multiplier: 3600 },
+  { label: "Days",    value: "days",    multiplier: 86400 },
+  { label: "Weeks",   value: "weeks",   multiplier: 604800 },
+];
 
 const emptyRow = (): BeneficiaryRow => ({ address: "", bps: "" });
 
 export function WillCreator({ onSuccess }: WillCreatorProps) {
   const [rows, setRows] = useState<BeneficiaryRow[]>([emptyRow()]);
   const [selectedPreset, setSelectedPreset] = useState<IntervalPreset>("30d");
-  const [customDays, setCustomDays] = useState("");
+  const [customValue, setCustomValue] = useState("");
+  const [customUnit, setCustomUnit] = useState<TimeUnit>("days");
   const [initialDeposit, setInitialDeposit] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -80,8 +90,10 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
 
   const getIntervalSeconds = (): number => {
     if (selectedPreset === "custom") {
-      const days = parseFloat(customDays);
-      return isNaN(days) ? 0 : Math.floor(days * 86400);
+      const val = parseFloat(customValue);
+      if (isNaN(val) || val <= 0) return 0;
+      const unit = UNIT_OPTIONS.find((u) => u.value === customUnit);
+      return Math.floor(val * (unit?.multiplier ?? 1));
     }
     return INTERVAL_PRESETS.find((p) => p.value === selectedPreset)?.seconds ?? 0;
   };
@@ -115,7 +127,7 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
 
     const intervalSec = getIntervalSeconds();
     if (intervalSec < MIN_INTERVAL_SECONDS) {
-      newErrors.interval = "Minimum interval is 1 hour";
+      newErrors.interval = "Minimum interval is 1 minute";
     }
 
     setErrors(newErrors);
@@ -129,7 +141,7 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
     const shares = rows.map((r) => BigInt(r.bps));
     const interval = BigInt(getIntervalSeconds());
 
-    createWill(beneficiaries, shares, interval, initialDeposit);
+    createWill(beneficiaries, shares, interval);
   };
 
   const addRow = () => {
@@ -333,25 +345,44 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
               </div>
 
               {selectedPreset === "custom" && (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-2">
                   <Label className="text-sm text-muted-foreground">
-                    Custom interval (days)
+                    Custom interval
                   </Label>
+                  {/* Unit selector */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {UNIT_OPTIONS.map((unit) => (
+                      <Button
+                        key={unit.value}
+                        variant={customUnit === unit.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCustomUnit(unit.value)}
+                        className={cn(
+                          "border-border/50 text-xs",
+                          customUnit === unit.value &&
+                            "border-primary bg-primary text-white"
+                        )}
+                      >
+                        {unit.label}
+                      </Button>
+                    ))}
+                  </div>
+                  {/* Value input */}
                   <div className="relative">
                     <Input
                       type="number"
-                      placeholder="e.g. 14"
-                      value={customDays}
-                      onChange={(e) => setCustomDays(e.target.value)}
-                      min="0.042"
+                      placeholder="e.g. 5"
+                      value={customValue}
+                      onChange={(e) => setCustomValue(e.target.value)}
+                      min="1"
                       step="1"
                       className={cn(
-                        "border-border bg-muted/50 pr-14",
+                        "border-border bg-muted/50 pr-24",
                         errors.interval && "border-destructive"
                       )}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                      days
+                      {customUnit}
                     </span>
                   </div>
                   {errors.interval && (
@@ -363,17 +394,19 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
               )}
 
               <div className="rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground">
-                <p>
+                  <p>
                   <strong className="text-foreground">Interval:</strong>{" "}
                   {getIntervalSeconds() >= 86400
-                    ? `${Math.floor(getIntervalSeconds() / 86400)} days`
+                    ? `${(getIntervalSeconds() / 86400).toFixed(2).replace(/\.?0+$/, "")} day(s)`
                     : getIntervalSeconds() >= 3600
-                    ? `${Math.floor(getIntervalSeconds() / 3600)} hours`
-                    : `${getIntervalSeconds()} seconds`}{" "}
+                    ? `${(getIntervalSeconds() / 3600).toFixed(2).replace(/\.?0+$/, "")} hour(s)`
+                    : getIntervalSeconds() >= 60
+                    ? `${(getIntervalSeconds() / 60).toFixed(2).replace(/\.?0+$/, "")} minute(s)`
+                    : `${getIntervalSeconds()} second(s)`}{" "}
                   ({getIntervalSeconds().toLocaleString()} seconds)
                 </p>
                 <p className="mt-1 text-muted-foreground/60">
-                  Minimum: 1 hour on testnet
+                  Minimum: 1 minute
                 </p>
               </div>
             </CardContent>
@@ -392,8 +425,7 @@ export function WillCreator({ onSuccess }: WillCreatorProps) {
                 </span>
               </CardTitle>
               <CardDescription>
-                You can deposit ETH now or top up later. A zero deposit creates
-                the will without locking funds yet.
+              Deposit STT after your will is created using the dashboard. Creating the will itself requires no initial deposit.
               </CardDescription>
             </CardHeader>
             <CardContent>
